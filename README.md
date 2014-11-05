@@ -1,2 +1,2 @@
-cs73project
+sentiment-market-predictor
 ===========
