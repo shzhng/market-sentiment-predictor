@@ -1,2 +1,2 @@
-sentiment-market-predictor
+market-sentiment-predictor
 ===========
