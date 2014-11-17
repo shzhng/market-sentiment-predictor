@@ -57,6 +57,7 @@ def getSentimentByDay(day):
 
     print json.dumps(news, indent=4, separators=(',', ': '))
 
+
 if __name__=='__main__':
     today = date.today()
     yeardelta = timedelta(days=365)

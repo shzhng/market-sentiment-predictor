@@ -56,8 +56,7 @@ class SentimentDict:
                 elif value < 0:
                     neg += value
         #return a tupple of the value of the positive words, value of the negative values and net score
-        return (pos, neg, pos + neg)
-
+        return pos, neg
 
 #test that it works on a string
 def test():

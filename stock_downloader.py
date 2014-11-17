@@ -96,6 +96,3 @@ def main():
 
     print databank.getStockDirections("2014-01-02", "2014-01-08")
     print databank.getStockReturn("2014-01-02", "2014-01-08")
-
-
-main()
