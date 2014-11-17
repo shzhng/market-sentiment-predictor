@@ -24,11 +24,9 @@ class SentimentDict:
         #return newDict
 
     def loadSentimentsPitt(self, path):
-
         newDict = {}
         word = ""
         sent = ""
-
         for line in open(path):
             pieces = line.split()
             for piece in pieces:
@@ -75,4 +73,4 @@ def test():
     print "Neg Total: " + str(triple[1])
     print "Net Score: " + str(triple[2])
 
-test()
+#test()
