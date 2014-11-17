@@ -7,7 +7,7 @@ negative = "./negative-words.txt"
 
 import string
 
-class sentimentDict:
+class SentimentDict:
 
     def __init__(self):
         self.sentiments = None
@@ -63,7 +63,7 @@ class sentimentDict:
 
 #test that it works on a string
 def test():
-    test = sentimentDict()
+    test = SentimentDict()
 
     test.loadSentimentsPitt("pitt_lexicon.tff")
 
