@@ -10,7 +10,7 @@ import string
 class sentimentDict:
 
     def __init__(self):
-        self.sentiments = self.loadSentiments()
+        self.sentiments = None
 
     def loadSentiments(self):
         newDict = {}
@@ -19,7 +19,30 @@ class sentimentDict:
             newDict[line.strip()] = 1
         for line in open(negative):
             newDict[line.strip()] = -1
-        return newDict
+
+        self.sentiments = newDict
+        #return newDict
+
+    def loadSentimentsPitt(self, path):
+
+        newDict = {}
+        word = ""
+        sent = ""
+
+        for line in open(path):
+            pieces = line.split()
+            for piece in pieces:
+                pieceparts = piece.split('=')
+                if pieceparts[0] == "word1":
+                    word = pieceparts[1]
+                if pieceparts[0] == "priorpolarity":
+                    sent = pieceparts[1]
+            if sent == "positive":
+                newDict[word] = 1
+            else:
+                newDict[word] = -1
+
+        self.sentiments = newDict
 
     #function that generates a score for a given string of text
     #assuming that value is not always just 1 for positive and -1 for negative since we could weight words
@@ -41,6 +64,9 @@ class sentimentDict:
 #test that it works on a string
 def test():
     test = sentimentDict()
+
+    test.loadSentimentsPitt("pitt_lexicon.tff")
+
     string = "he aggressively went$ to happy the 'Exciting. rage joyous/ ferocious"
     triple = test.generateScore(string)
 
@@ -50,9 +76,3 @@ def test():
     print "Net Score: " + str(triple[2])
 
 test()
-
-
-
-
-
-

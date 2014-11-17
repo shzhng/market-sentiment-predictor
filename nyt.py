@@ -1,6 +1,9 @@
+#!/usr/bin/env python2
+
 import json
 import math
 import requests
+import datetime
 
 NYT_URI = 'http://api.nytimes.com/svc/search/v2/articlesearch.json'
 
@@ -46,8 +49,10 @@ def getSentimentByDay(day):
 
     if news is None:
         print "Error occurred while grabbing the sentiment for the day:", day
+        return
 
     print json.dumps(news, indent=4, separators=(',', ': '))
 
 if __name__=='__main__':
     getSentimentByDay('20141104') # TEST
+
