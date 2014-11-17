@@ -1,9 +1,11 @@
-# gender_classify
+# svd
 # Create for HW5 CS73 14F Due November 2
 # @author: Sravana Reddy
 # Modified by Joshua Lang to implement training, testing, and additional bagofwords function
 # Description: Perceptron Class that is used to use perceptron learning as part of a vector space model
 # to analyze the gender of different twitter users based on twitter data.
+#
+''' I think it will only run in python'''
 
 
 from __future__ import division
@@ -30,7 +32,10 @@ class trainDataStorage:
         self.scoreDict = {}
         self.stockDict = {}
         self.fillDicts(trainDirectory)
-    
+        
+        self.dates = list(self.stockDict.keys())
+        shuffle(self.dates)
+        
     def getSentiments(self):
         return self.sentDict.sentiments
     
@@ -45,7 +50,10 @@ class trainDataStorage:
     
     #create a list of the dates we are looking at in a particular order so it matches the place in the label and data vectors
     def getDates(self):
-        return sorted(list(self.stockDict.keys()))
+#         x = [i for i in range(traindata.shape[0])]   #generate a list of the indices
+#         shuffle(x)                                   # randomize the order
+#         return sorted(list(self.stockDict.keys()))
+        return self.dates
     
     #fill all of the dictionaries for training
     def fillDicts(self, directory):
@@ -73,7 +81,15 @@ class trainDataStorage:
                             superPos +=1
                         if neg < -4:
                             superNeg +=1
-    
+                    elif item['lead_paragraph']:
+                        self.textDict[name].append(item['lead_paragraph'])            #append the text to a dictionary to keep all abstracts
+                        pos, neg = self.sentDict.generateScore(item['lead_paragraph'])
+                        posTotal += pos
+                        negTotal += neg
+                        if pos > 4:
+                            superPos +=1
+                        if neg < -4:
+                            superNeg +=1
                 self.scoreDict[name] = (posTotal, negTotal, posTotal + negTotal, superPos, superNeg)  #add a triple as the value for each date
             break
         
@@ -271,10 +287,10 @@ def words(data):
                 feature_counts[word]+=1
                 
     
-#     cur_index += 1
-#     features["*PERCENT*"] = cur_index
     cur_index += 1
-    features["*POS*"] = cur_index
+    features["*PERCENT*"] = cur_index
+#     cur_index += 1
+#     features["*POS*"] = cur_index
     cur_index += 1
     features["*NEG*"] = cur_index
 #     cur_index += 1
@@ -295,7 +311,7 @@ def words(data):
         for abstract in data.getText()[date]:
             for word in abstract.split():
 #                 word.strip().lstrip(string.punctuation).rstrip(string.punctuation)
-                if not data.getSentiments().has_key(word) and word not in ['benefit', 'benefits', 'benefitting']:  #no impact'trending', 'benefits', 'depression', 'bull', 'hot', 'improvement'
+                if not data.getSentiments().has_key(word) and word not in []:  #no impact'trending', 'benefits', 'depression', 'bull', 'hot', 'improvement'
                     #negative impact million, trillion, billion, growth, revenue,performance, salary, market
                     continue
                 if word in features:
@@ -305,8 +321,8 @@ def words(data):
                     features[word] = cur_index
                     feat_index = cur_index
                 representations[i][feat_index] += 1
-#             representations[i][features["*PERCENT*"]] = data.getScores()[date][0]/ (data.getScores()[date][0] - data.getScores()[date][1])
-            representations[i][features["*POS*"]] = data.getScores()[date][0]
+            representations[i][features["*PERCENT*"]] = data.getScores()[date][0]/ (data.getScores()[date][0] - data.getScores()[date][1])
+#             representations[i][features["*POS*"]] = data.getScores()[date][0]
             representations[i][features["*NEG*"]] = data.getScores()[date][1]
 #             representations[i][features["*NET*"]] = data.getScores()[date][2]/len(data.getText()[date])
 #             representations[i][features["*NUM_ARTICLES*"]] = len(data.getText()[date])
@@ -323,13 +339,11 @@ def words(data):
 
 if __name__=='__main__':
 #     traindata, trainlabels = rawdata_to_vectors('data', ndims=None)#      
-    points, labels = rawdata_to_vectors('test', ndims=None)#
+    points, labels = rawdata_to_vectors('newTest', ndims=None)#
 #     #added text
     ttsplit = int(numpy.size(labels)/10)  #split into train, dev, and test 80-10-10
     traindata, devdata, testdata = numpy.split(points, [ttsplit*8, ttsplit*9])
     trainlabels, devlabels, testlabels = numpy.split(labels, [ttsplit*8, ttsplit*9])
-    
-#     print '******'
     
     numfeats = numpy.size(traindata, axis=1)
     classifier = Perceptron(numfeats)
@@ -337,8 +351,8 @@ if __name__=='__main__':
     print "Training..."
     
     #CHOOSE WHICH TRAINING METHOD THAT YOU WANT TO USE BY COMMENTING OUT THE ONE YOU DON'T WANT
-    trainmistakes = classifier.train(traindata, trainlabels, max_epochs = 300)   #regular training
-#     trainmistakes = classifier.trainAvgPerceptron(traindata, trainlabels, max_epochs = 300)  #training with the average perceptron
+    trainmistakes = classifier.train(traindata, trainlabels, max_epochs = 1000)   #regular training
+#     trainmistakes = classifier.trainAvgPerceptron(traindata, trainlabels, max_epochs = 500)  #training with the average perceptron
     
     print "Finished training, with", trainmistakes*100/numpy.size(trainlabels), "% error rate"
 
