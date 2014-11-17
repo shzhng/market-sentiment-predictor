@@ -16,7 +16,7 @@ class stockDatabank:
     def download(self):
 
         #downloaded_data  = urllib2.urlopen("http://ichart.finance.yahoo.com/table.csv?s=DJIA&d=10&e=14&f=2014&g=d&a=0&b=1&c=2000&ignore=.csv")
-        downloaded_data  = urllib2.urlopen("http://ichart.finance.yahoo.com/table.csv?s=DJIA&d=10&e=14&f=2014&g=d&a=10&b=14&c=2013&ignore=.csv")
+        downloaded_data  = urllib2.urlopen("http://ichart.finance.yahoo.com/table.csv?s=DJIA&d=10&e=14&f=2014&g=d&a=10&b=18&c=2013&ignore=.csv")
         csv_data = reversed(list(csv.reader(downloaded_data)))
         counter = 0
         prevClose = 0
@@ -91,8 +91,11 @@ def main():
 
     databank = stockDatabank()
 
-    #databank.download()
-    databank.read('./stockdata.csv')
+    databank.download()
+    #databank.read('./stockdata.csv')
 
     print databank.getStockDirections("2014-01-02", "2014-01-08")
-    print databank.getStockReturn("2014-01-02", "2014-01-08")
+    print databank.getStockReturns("2014-01-02", "2014-01-08")
+
+
+#main()
