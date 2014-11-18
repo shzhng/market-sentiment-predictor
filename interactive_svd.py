@@ -100,7 +100,7 @@ class trainDataStorage:
         removeList = []
         for date in self.textDict:
             if databank.dateList.has_key(date):
-                self.stockDict[date] = (databank.getStockDirections(date), databank.getStockReturns(date))
+                self.stockDict[date] = (databank.getStockDirections(date), databank.getStockReturns(date)[0],databank.getStockReturns(date)[1], databank.getStockReturns(date)[2])
             else:
                 removeList.append(date)
         for date in removeList:
@@ -347,55 +347,86 @@ def words(data):
 
 class StockGame:
     def __init__(self, startingAmount, shares, testdata, testlabels, testdates, data, weightVector):
-        self.yourBalance = startingAmount
-        self.yourShares = shares
-        self.compBal = startingAmount
-        self.compShares = shares
         
         self.testdata = numpy.c_[testdata, numpy.ones(testdata.shape[0])]
         self.testlabels = testlabels
         self.testdates = testdates
         self.allDates = data.getDates()
         self.data = data
-        
         self.w = weightVector
-
+        
+        self.yourBalance = startingAmount
+        self.yourShares = shares
+        self.yourTotal = startingAmount + shares* float(self.data.getStocks()[self.testdates[0]][2])
+        
+        self.compBalance = startingAmount
+        self.compShares = shares
+        self.compTotal = startingAmount + shares* float(self.data.getStocks()[self.testdates[0]][2])
+        
+        self.startShares = shares
+        self.startBalance = startingAmount
+        self.startTotal = startingAmount + shares* float(self.data.getStocks()[self.testdates[0]][2])
+        
     def getPrediction(self, row):
-        print self.data.getStocks()[self.testdates[row]]
-        openPrice = str(self.data.getStocks()[self.testdates[row]][2])
-        closePrice = str(self.data.getStock()[self.testdates[row]][3])
+        openPrice = float(self.data.getStocks()[self.testdates[row]][2])
+        closePrice = float(self.data.getStocks()[self.testdates[row]][3])
         
         value = numpy.dot(self.testdata[row], self.w)
-        self.predictionPrompt(value)
-        delta = int(raw_input("How many shares would you like to buy/sell today: "))
-        self.transaction(delta, value, self.testlabels[row], openPrice)
+        self.predictionPrompt(value, openPrice)
+        
+        delta = self.getUserInput()
+        if delta == 'q':
+            return True
+        self.transaction(int(delta), value, self.testlabels[row], openPrice)
         
         if self.testlabels[row] == 1:
             print "The stock price increased to " + str(closePrice) + "."
         else:
             print "The stock price decreased to " + str(closePrice) + "."
-        return closePrice
+        return False
+    
+    def getUserInput(self):
+        try:
+            input = raw_input("How many shares would you like to buy/sell today? ")
+            if input == 'q':
+                return input
+            input = int(input)
+            return input
+        except Exception:
+            return self.getUserInput()
     
     def playGame (self):
         for row in range(self.testdata.shape[0]):
             close = self.getPrediction(row)
-            quit = raw_input("Do you want to continue playing:" )
-            if quit =='q':
-                self.quit(close)
-                
-    def quit(self, closingPrice = 13000):
+            if close:
+                self.quit(float(self.data.getStocks()[self.testdates[row]][3]))
+                return
+        self.quit(float(self.data.getStocks()[self.testdates[self.testdata.shape[0]-1]][3]))
+        
+    def quit(self, closingPrice):
         print "*******************"
         print "Thanks for playing."
         print "You have " + str(self.yourShares)  + " shares at " + str(closingPrice)
-        print "Your account has"  + str(self.yourBalance) + "."
-        print "Your total is " + str(self.yourBalance + (self.yourShares*closingPrice))  
+        print "Your account has "  + str(self.yourBalance) + "."
+        total = self.yourBalance + float(self.yourShares* float(closingPrice))
+        diff = total- self.yourTotal
+        print "Your profit is " + str(diff) + "."
         
         print "*******************"
-        print "If you invested with the predictor, you would have " + str(self.compShares)  + " shares at " + str(closingPrice)
-        print "Your account has"  + str(self.compBalance) + "."
-        print "Your total is "  + str(self.compBalance + (self.compShares*closingPrice))  
+        print "The predictor has " + str(self.compShares)  + " shares at " + str(closingPrice)
+        print "Your account has "  + str(self.compBalance) + "."
+        total = self.compBalance + float(self.compShares* float(closingPrice))
+        diff = total - self.compTotal 
+        print "Your total is "  + str(diff) + "."
+        
+        print "*******************"
+        print "If you just kept your money in your market, you would have " + str(self.startShares)  + " shares at " + str(closingPrice)
+        total = self.startBalance + float(self.startShares* float(closingPrice))
+        diff = total - self.startTotal
+        print "Your total is "  + str(diff) + "."    
         
     def predictionPrompt(self, value, open):
+        print ""
         if value < 0:
             print "Our predictor anticipates the market to go down today."
         elif value > 0:
@@ -403,51 +434,37 @@ class StockGame:
         else:
             print "Our predictor anticipates the market to do nothing today."
         print "Your Balance:" + str(self.yourBalance) + "  Your Shares: " + str(self.yourShares)
-        print "Opening Balance: " + str(open) + "."
+        print "Opening Price: " + str(open) + "."
         
     def transaction(self, shares, value, label, openPrice):
         if value < 0:
-            self.compBal += math.fabs(shares)*openPrice
-            self.compShares -= math.fabs(shares)
+            self.compBalance += math.fabs(5)*openPrice
+            self.compShares -= math.fabs(5)
         if value > 0:
-            self.compBal -= math.fabs(shares)*openPrice
-            self.compShares += math.fabs(shares)
+            self.compBalance -= math.fabs(5) * openPrice
+            self.compShares += math.fabs(5)
         self.yourBalance -= shares*openPrice
         self.yourShares += shares
 
-
 if __name__=='__main__':
 #     traindata, trainlabels = rawdata_to_vectors('data', ndims=None)#      
-    points, labels, data = rawdata_to_vectors('newTest', ndims=None)#
-#     #added text
-#     dateList = data.getDates()
-#     print dateList
-#     dateArray = numpy.array(data.getDates())
-#     print dateArray
+    points, labels, data = rawdata_to_vectors('Test', ndims=None)#
+
     ttsplit = int(numpy.size(labels)/10)  #split into train, dev, and test 80-10-10
 
     traindates, devdates, testdates = numpy.split(numpy.array(data.getDates()), [ttsplit*8, ttsplit*9])
     traindata, devdata, testdata = numpy.split(points, [ttsplit*8, ttsplit*9])
     trainlabels, devlabels, testlabels = numpy.split(labels, [ttsplit*8, ttsplit*9])
-    
-#     print str(traindates.shape) + " **** " + str(traindata.shape) + "train"
-#     print str(testdates.shape) + " **** " + str(testdata.shape) + "test"
-#     print str(devdates.shape) + " **** " + str(devdata.shape) + "dev"
-    
+        
     numfeats = numpy.size(traindata, axis=1)
     classifier = Perceptron(numfeats)
     
     print "Training..."
     
-    #CHOOSE WHICH TRAINING METHOD THAT YOU WANT TO USE BY COMMENTING OUT THE ONE YOU DON'T WANT
     trainmistakes = classifier.train(traindata, trainlabels, max_epochs = 1000)   #regular training
 #     trainmistakes = classifier.trainAvgPerceptron(traindata, trainlabels, max_epochs = 500)  #training with the average perceptron
     
     print "Finished training, with", trainmistakes*100/numpy.size(trainlabels), "% error rate"
-    game = StockGame(100000, 20, devdata, devlabels, devdates, data, classifier.getW())
+    game = StockGame(10000000, 100, devdata, devlabels, devdates, data, classifier.getW())
     game.playGame()
-#     
-#     devmistakes = classifier.test(devdata, devlabels, devdates, data)
-#     print devmistakes*100/numpy.size(devlabels), "% error rate on development data"
-#     testmistakes = classifier.test(testdata, testlabels, testdates, data)
-#     print testmistakes*100/numpy.size(testlabels), "% error rate on test data"
+

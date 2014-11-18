@@ -24,17 +24,18 @@ import csv
 
 
 class trainDataStorage:
-    def __init__(self, trainDirectory):
+    def __init__(self, trainDirectory, date1, date2):
         self.sentDict = sentiment.SentimentDict()
         self.sentDict.loadSentimentsPitt("pitt_lexicon.tff")
 
         self.textDict = defaultdict(list)
         self.scoreDict = {}
         self.stockDict = {}
-        self.fillDicts(trainDirectory)
+        self.fillDicts(trainDirectory, date1, date2)
         
-        self.dates = list(self.stockDict.keys())
-        shuffle(self.dates)
+        self.dates = sorted(list(self.stockDict.keys()))
+#         list(self.stockDict.keys())
+#         shuffle(self.dates)
         
     def getSentiments(self):
         return self.sentDict.sentiments
@@ -52,13 +53,13 @@ class trainDataStorage:
     def getDates(self):
 #         x = [i for i in range(traindata.shape[0])]   #generate a list of the indices
 #         shuffle(x)                                   # randomize the order
-        return sorted(list(self.stockDict.keys()))
+        return self.dates
 #         return sorted(self.dates)
     
     #fill all of the dictionaries for training
-    def fillDicts(self, directory):
+    def fillDicts(self, directory, date1, date2):
         self.fillTextAndScoreDict(directory)
-        self.fillStockDict()
+        self.fillStockDict(date1, date2)
         
     #fill the text and score dicts using the training data from 2014
     def fillTextAndScoreDict(self, directory):
@@ -93,12 +94,12 @@ class trainDataStorage:
                 self.scoreDict[name] = (posTotal, negTotal, posTotal + negTotal, superPos, superNeg)  #add a triple as the value for each date
             break
         
-    def fillStockDict(self):
+    def fillStockDict(self, date1, date2):
         databank = stock_downloader.stockDatabank()
         databank.download()
         removeList = []
         for date in self.textDict:
-            if databank.dateList.has_key(date):
+            if databank.dateList.has_key(date) and date >= date1 and date <= date2:
                 self.stockDict[date] = (databank.getStockDirections(date), databank.getStockReturns(date)[0],databank.getStockReturns(date)[1], databank.getStockReturns(date)[2] )
             else:
                 removeList.append(date)
@@ -134,15 +135,7 @@ class Perceptron:
         while loops < max_epochs:
             
             mistakes = 0  #initialize the number of mistakes to 0
-            
-#             #COMMENT OUT TO READ TWEETS IN ORDER
-#             #loop code for randomly going through the tweets in a random order
-#             x = [i for i in range(traindata.shape[0])]   #generate a list of the indices
-#             shuffle(x)                                   # randomize the order
-#             for row in x:
 
-            #COMMENT OUT TO READ THE TWEETS IN RANDOM ORDER
-            #loop code to read the tweets in order
             for row in range(traindata.shape[0]): 
                         
                 value = numpy.dot(traindata[row], self.w)  # get the dot product of the data point and the weight vector
@@ -166,27 +159,13 @@ class Perceptron:
         testdata = numpy.c_[ testdata, numpy.ones(testdata.shape[0]) ] 
         mistakes = 0
         dates = data.getDates()
-#         csvout = csv.writer(open("graph.csv", "wb"))
-#         csvout.writerow(("Correct", "Guess", "Actual", "Value", "Perceptron"))
         for row in range(testdata.shape[0]):
             value = numpy.dot(testdata[row], self.w)
-            
-            #increment mistakes if the
-#             stockValue = str(data.getStocks()[testdates[row]][1])
             if value < 0 and testlabels[row] == 1:
-#                 print "ERROR: Guessed +; Actually  -:   " + stockValue
-#                 csvout.writerow(("W", -1, 1, stockValue, value))
                 mistakes += 1
             elif value > 0 and testlabels[row] == -1:
-#                 print "WRONG: Guessed -; Actually  +:   " + stockValue
-#                 csvout.writerow(("W", 1, -1, stockValue, value))
                 mistakes += 1
-#             else:
-#                 if value>0:
-# #                     csvout.writerow(("C", 1, 1, stockValue, value))
-#                 else:
-#                     csvout.writerow(("C", -1, -1, stockValue, value))
-#                 print "CORRECT: Guessed right for:    " + stockValue
+
         return mistakes
     
     def trainAvgPerceptron(self, traindata, trainlabels, max_epochs):
@@ -241,29 +220,18 @@ class Perceptron:
             self.w = self.w - (self.cachedW/counter)        #update the weight vector
             return mistakes
     
-def rawdata_to_vectors(filename, ndims):
+def rawdata_to_vectors(filename, date1, date2, ndims):
     """reads raw data, maps to feature space, 
     returns a matrix of data points and labels"""
-    data = trainDataStorage(filename)
+    data = trainDataStorage(filename, date1, date2)
     labels = numpy.zeros((len(data.getText()),), dtype = numpy.int)  #gender labels for each user
-    
-   
-#     csvout = csv.writer(open("mydata.csv", "wb"))
-#     csvout.writerow(("Date", "StockChange", "Positive", "Negative", "Net Change"))
+
     dates = data.getDates()
     for date in range(len(dates)):
         if data.getStocks()[dates[date]][0] == 1:
             labels[date] = 1
         else:
             labels[date] = -1
-#         datum = str(data.getDates()[date])
-#         change = str(data.getStocks()[dates[date]][1])
-#         pos = str(data.getScores()[dates[date]][0])
-#         neg = str(data.getScores()[dates[date]][1])
-#         net = str(data.getScores()[dates[date]][2])
-#         csvout.writerow((datum, change, pos, neg, net))
-#         print "Date: " + str(data.getDates()[date]) + " Change: " + str(data.getStocks()[dates[date]][1]) + " Pos/Neg/Net:" + str(data.getScores()[dates[date]][0]) + "/" + str(data.getScores()[dates[date]][1]) + "/" + str(data.getScores()[dates[date]][2])
-
     representations, numfeats = words(data)
     
     print "Featurized data"
@@ -351,23 +319,20 @@ def words(data):
     return representations, cur_index+1
 
 
-if __name__=='__main__':
-#     traindata, trainlabels = rawdata_to_vectors('data', ndims=None)#      
-    points, labels, data = rawdata_to_vectors('Test', ndims=None)#
-#     #added text
-#     dateList = data.getDates()
-#     print dateList
-#     dateArray = numpy.array(data.getDates())
-#     print dateArray
-    ttsplit = int(numpy.size(labels)/10)  #split into train, dev, and test 80-10-10
+if __name__=='__main__':    
+    date1 = "20121212"
+    date2 = "20141111"
+    points, labels, data = rawdata_to_vectors('newTest', date1, date2, ndims=None)
 
-    traindates, devdates, testdates = numpy.split(numpy.array(data.getDates()), [ttsplit*8, ttsplit*9])
-    traindata, devdata, testdata = numpy.split(points, [ttsplit*8, ttsplit*9])
-    trainlabels, devlabels, testlabels = numpy.split(labels, [ttsplit*8, ttsplit*9])
+    ttsplit = int(numpy.size(labels)/10)  #split into train, dev, and test 80-10-10
+    print data.getDates()
+    traindates, testdates = numpy.split(numpy.array(data.getDates()), [ttsplit*8.5])
+    traindata, testdata = numpy.split(points, [ttsplit*8.5])
+    trainlabels, testlabels = numpy.split(labels, [ttsplit*8.5])
     
-    print str(traindates.shape) + " **** " + str(traindata.shape) + "train"
-    print str(testdates.shape) + " **** " + str(testdata.shape) + "test"
-    print str(devdates.shape) + " **** " + str(devdata.shape) + "dev"
+#     traindates, devdates, testdates = numpy.split(numpy.array(data.getDates()), [ttsplit*8, ttsplit*9])
+#     traindata, devdata, testdata = numpy.split(points, [ttsplit*8, ttsplit*9])
+#     trainlabels, devlabels, testlabels = numpy.split(labels, [ttsplit*8, ttsplit*9])
     
     numfeats = numpy.size(traindata, axis=1)
     classifier = Perceptron(numfeats)
@@ -380,7 +345,7 @@ if __name__=='__main__':
     
     print "Finished training, with", trainmistakes*100/numpy.size(trainlabels), "% error rate"
 
-    devmistakes = classifier.test(devdata, devlabels, devdates, data)
-    print devmistakes*100/numpy.size(devlabels), "% error rate on development data"
+#     devmistakes = classifier.test(devdata, devlabels, devdates, data)
+#     print devmistakes*100/numpy.size(devlabels), "% error rate on development data"
     testmistakes = classifier.test(testdata, testlabels, testdates, data)
     print testmistakes*100/numpy.size(testlabels), "% error rate on test data"
