@@ -52,8 +52,8 @@ class trainDataStorage:
     def getDates(self):
 #         x = [i for i in range(traindata.shape[0])]   #generate a list of the indices
 #         shuffle(x)                                   # randomize the order
-#         return sorted(list(self.stockDict.keys()))
-        return self.dates
+        return sorted(list(self.stockDict.keys()))
+#         return sorted(self.dates)
     
     #fill all of the dictionaries for training
     def fillDicts(self, directory):
@@ -99,13 +99,12 @@ class trainDataStorage:
         removeList = []
         for date in self.textDict:
             if databank.dateList.has_key(date):
-                self.stockDict[date] = (databank.getStockDirections(date), databank.getStockReturns(date))
+                self.stockDict[date] = (databank.getStockDirections(date), databank.getStockReturns(date)[0],databank.getStockReturns(date)[1], databank.getStockReturns(date)[2] )
             else:
                 removeList.append(date)
         for date in removeList:
             self.textDict.pop(date)
             self.scoreDict.pop(date)
-
             
 #Function to reduce the dimensions of the model (written by Sravana Reddy)
 def dimensionality_reduce(data, ndims):
@@ -163,16 +162,31 @@ class Perceptron:
         return mistakes #return the number of mistakes we have made
     
     #function to test the testing data for perception learning
-    def test(self, testdata, testlabels):
+    def test(self, testdata, testlabels, testdates, data):
         testdata = numpy.c_[ testdata, numpy.ones(testdata.shape[0]) ] 
         mistakes = 0
+        dates = data.getDates()
+#         csvout = csv.writer(open("graph.csv", "wb"))
+#         csvout.writerow(("Correct", "Guess", "Actual", "Value", "Perceptron"))
         for row in range(testdata.shape[0]):
             value = numpy.dot(testdata[row], self.w)
+            
             #increment mistakes if the
+#             stockValue = str(data.getStocks()[testdates[row]][1])
             if value < 0 and testlabels[row] == 1:
+#                 print "ERROR: Guessed +; Actually  -:   " + stockValue
+#                 csvout.writerow(("W", -1, 1, stockValue, value))
                 mistakes += 1
             elif value > 0 and testlabels[row] == -1:
+#                 print "WRONG: Guessed -; Actually  +:   " + stockValue
+#                 csvout.writerow(("W", 1, -1, stockValue, value))
                 mistakes += 1
+#             else:
+#                 if value>0:
+# #                     csvout.writerow(("C", 1, 1, stockValue, value))
+#                 else:
+#                     csvout.writerow(("C", -1, -1, stockValue, value))
+#                 print "CORRECT: Guessed right for:    " + stockValue
         return mistakes
     
     def trainAvgPerceptron(self, traindata, trainlabels, max_epochs):
@@ -270,7 +284,7 @@ def rawdata_to_vectors(filename, ndims):
         points = dimensionality_reduce(points, ndims)
 
     print "Converted to matrix representation"
-    return points, labels
+    return points, labels, data
     
 
 def words(data):
@@ -339,11 +353,21 @@ def words(data):
 
 if __name__=='__main__':
 #     traindata, trainlabels = rawdata_to_vectors('data', ndims=None)#      
-    points, labels = rawdata_to_vectors('newTest', ndims=None)#
+    points, labels, data = rawdata_to_vectors('Test', ndims=None)#
 #     #added text
+#     dateList = data.getDates()
+#     print dateList
+#     dateArray = numpy.array(data.getDates())
+#     print dateArray
     ttsplit = int(numpy.size(labels)/10)  #split into train, dev, and test 80-10-10
+
+    traindates, devdates, testdates = numpy.split(numpy.array(data.getDates()), [ttsplit*8, ttsplit*9])
     traindata, devdata, testdata = numpy.split(points, [ttsplit*8, ttsplit*9])
     trainlabels, devlabels, testlabels = numpy.split(labels, [ttsplit*8, ttsplit*9])
+    
+    print str(traindates.shape) + " **** " + str(traindata.shape) + "train"
+    print str(testdates.shape) + " **** " + str(testdata.shape) + "test"
+    print str(devdates.shape) + " **** " + str(devdata.shape) + "dev"
     
     numfeats = numpy.size(traindata, axis=1)
     classifier = Perceptron(numfeats)
@@ -356,7 +380,7 @@ if __name__=='__main__':
     
     print "Finished training, with", trainmistakes*100/numpy.size(trainlabels), "% error rate"
 
-    devmistakes = classifier.test(devdata, devlabels)
+    devmistakes = classifier.test(devdata, devlabels, devdates, data)
     print devmistakes*100/numpy.size(devlabels), "% error rate on development data"
-    testmistakes = classifier.test(testdata, testlabels)
+    testmistakes = classifier.test(testdata, testlabels, testdates, data)
     print testmistakes*100/numpy.size(testlabels), "% error rate on test data"

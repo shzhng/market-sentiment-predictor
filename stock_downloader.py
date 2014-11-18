@@ -39,6 +39,7 @@ class stockDatabank:
                 else:
                     self.changeList.append(0)
                 self.returnList.append(float(row[4]) - float(row[1]))
+
             counter += 1
             prevClose = row[4]
         localFile.close()
@@ -89,10 +90,12 @@ class stockDatabank:
             returnList = []
             for i in range(counter, counterTwo + 1):
                 returnList.append(round(self.returnList[i], 4))
+                
             return returnList
+      
         else:
-            return self.returnList[counter]
-
+            return (self.returnList[counter], self.StockDict[date]["Open"], self.StockDict[date]["Close"])
+    
 def main():
 
     databank = stockDatabank()
