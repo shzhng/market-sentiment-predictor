@@ -16,7 +16,7 @@ from sklearn import svm
 import scipy
 from dataStore import dataStore
 import string
-from svmGame import svmGame
+#from svmGame import svmGame
 
 
 #Function to reduce the dimensions of the model (written by Sravana Reddy)
@@ -379,7 +379,7 @@ if __name__=='__main__':
     date1 = "20100101"
 #     date2 = "20140617"
     date2 = "20141120"
-    points, labels, data = rawdata_to_vectors('authors', date1, date2, ndims=None)
+    points, labels, data = rawdata_to_vectors('newTest', date1, date2, ndims=None)
 
     ttsplit = int(numpy.size(labels)/10)  #split into train, dev, and test 80-10-10
     traindates, testdates = numpy.split(numpy.array(data.getDates()), [ttsplit*8.5])
@@ -405,12 +405,12 @@ if __name__=='__main__':
 
     print str(traindates.shape), "****", str(traindata.shape), "train"
     print str(testdates.shape), "****", str(testdata.shape), "test"
-    print str(devdates.shape), "****", str(devdata.shape), "dev"
+    #print str(devdates.shape), "****", str(devdata.shape), "dev"
 
     print "Training..."
 
-    print svc.predict(devdata)
+    #print svc.predict(devdata)
     print svc.predict(testdata)
 
-    print svc.score(devdata, devlabels), "% rate on development data"
+    #print svc.score(devdata, devlabels), "% rate on development data"
     print svc.score(testdata, testlabels), "% rate on test data"

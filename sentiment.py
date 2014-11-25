@@ -25,20 +25,13 @@ class SentimentDict:
 
     def loadSentimentsPitt(self, path):
         newDict = {}
-        word = ""
-        sent = ""
         for line in open(path):
-            pieces = line.split()
-            for piece in pieces:
-                pieceparts = piece.split('=')
-                if pieceparts[0] == "word1":
-                    word = pieceparts[1]
-                if pieceparts[0] == "priorpolarity":
-                    sent = pieceparts[1]
-            if sent == "positive":
-                newDict[word] = 1
-            else:
-                newDict[word] = -1
+            attrs = dict(attr.partition('=')[::2] for attr in line.split())
+            word = attrs['word1']
+            if attrs['priorpolarity'] == 'positive':
+                newDict[word] = 1 if attrs['type'] == 'weaksubj' else 2
+            elif attrs['priorpolarity'] == 'negative':
+                newDict[word] = -1 if attrs['type'] == 'weaksubj' else -2
 
         self.sentiments = newDict
 
