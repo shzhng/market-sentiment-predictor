@@ -1,3 +1,4 @@
+
 # svd
 # Create for HW5 CS73 14F Due November 2
 # @author: Sravana Reddy
@@ -9,104 +10,14 @@
 
 
 from __future__ import division
-import numpy
 import numpy.linalg
 from collections import defaultdict
-from random import shuffle
-import stock_downloader
-import sentiment
-import nyt
-import os
-import json
-import string
-from scipy import stats
 from sklearn import svm
 import scipy
-import csv
+from dataStore import dataStore
+import string
+from svmGame import svmGame
 
-
-class trainDataStorage:
-    def __init__(self, trainDirectory):
-        self.sentDict = sentiment.SentimentDict()
-        self.sentDict.loadSentimentsPitt("pitt_lexicon.tff")
-
-        self.textDict = defaultdict(list)
-        self.scoreDict = {}
-        self.stockDict = {}
-        self.fillDicts(trainDirectory)
-
-        self.dates = list(self.stockDict.keys())
-        shuffle(self.dates)
-
-    def getSentiments(self):
-        return self.sentDict.sentiments
-
-    def getText(self):
-        return self.textDict
-
-    def getScores(self):
-        return self.scoreDict
-
-    def getStocks(self):
-        return self.stockDict
-
-    #create a list of the dates we are looking at in a particular order so it matches the place in the label and data vectors
-    def getDates(self):
-#         x = [i for i in range(traindata.shape[0])]   #generate a list of the indices
-#         shuffle(x)                                   # randomize the order
-        return sorted(list(self.stockDict.keys()))
-#         return sorted(self.dates)
-
-    #fill all of the dictionaries for training
-    def fillDicts(self, directory):
-        self.fillTextAndScoreDict(directory)
-        self.fillStockDict()
-
-    #fill the text and score dicts using the training data from 2014
-    def fillTextAndScoreDict(self, directory):
-        for root, dirs, files in os.walk(directory):
-            for f in files:
-                posTotal, negTotal = 0, 0
-                superPos, superNeg = 0, 0
-                f = open(os.path.join(root, f), 'r')
-                news = json.loads(f.read())
-                if not news:
-                    continue
-                name = f.name.split('/')[1].strip("#")  #get the name as YYYYMMDD string
-                for item in news:
-                    if item['abstract']:
-                        self.textDict[name].append(item['abstract'])            #append the text to a dictionary to keep all abstracts
-                        pos, neg = self.sentDict.generateScore(item['abstract'])
-                        posTotal += pos
-                        negTotal += neg
-                        if pos > 4:
-                            superPos +=1
-                        if neg < -4:
-                            superNeg +=1
-                    elif item['lead_paragraph']:
-                        self.textDict[name].append(item['lead_paragraph'])            #append the text to a dictionary to keep all abstracts
-                        pos, neg = self.sentDict.generateScore(item['lead_paragraph'])
-                        posTotal += pos
-                        negTotal += neg
-                        if pos > 4:
-                            superPos +=1
-                        if neg < -4:
-                            superNeg +=1
-                self.scoreDict[name] = (posTotal, negTotal, posTotal + negTotal, superPos, superNeg)  #add a triple as the value for each date
-            break
-
-    def fillStockDict(self):
-        databank = stock_downloader.stockDatabank()
-        databank.download()
-        removeList = []
-        for date in self.textDict:
-            if databank.dateList.has_key(date):
-                self.stockDict[date] = (databank.getStockDirections(date), databank.getStockReturns(date)[0],databank.getStockReturns(date)[1], databank.getStockReturns(date)[2] )
-            else:
-                removeList.append(date)
-        for date in removeList:
-            self.textDict.pop(date)
-            self.scoreDict.pop(date)
 
 #Function to reduce the dimensions of the model (written by Sravana Reddy)
 def dimensionality_reduce(data, ndims):
@@ -243,10 +154,10 @@ class Perceptron:
             self.w = self.w - (self.cachedW/counter)        #update the weight vector
             return mistakes
 
-def rawdata_to_vectors(filename, ndims):
+def rawdata_to_vectors(filename, date1, date2, ndims):
     """reads raw data, maps to feature space,
     returns a matrix of data points and labels"""
-    data = trainDataStorage(filename)
+    data = dataStore(filename, date1, date2)
     labels = numpy.zeros((len(data.getText()),), dtype = numpy.int)  #gender labels for each user
 
 
@@ -258,17 +169,10 @@ def rawdata_to_vectors(filename, ndims):
             labels[date] = 1
         else:
             labels[date] = -1
-#         datum = str(data.getDates()[date])
-#         change = str(data.getStocks()[dates[date]][1])
-#         pos = str(data.getScores()[dates[date]][0])
-#         neg = str(data.getScores()[dates[date]][1])
-#         net = str(data.getScores()[dates[date]][2])
-#         csvout.writerow((datum, change, pos, neg, net))
-#         print "Date: " + str(data.getDates()[date]) + " Change: " + str(data.getStocks()[dates[date]][1]) + " Pos/Neg/Net:" + str(data.getScores()[dates[date]][0]) + "/" + str(data.getScores()[dates[date]][1]) + "/" + str(data.getScores()[dates[date]][2])
 
     representations, numfeats = words(data)
 
-    print "Featurized data"
+#     print "Featurized data"
 
     #convert to a matrix representation
     points = numpy.zeros((len(representations), numfeats))
@@ -285,39 +189,39 @@ def rawdata_to_vectors(filename, ndims):
     if ndims:
         points = dimensionality_reduce(points, ndims)
 
-    print "Converted to matrix representation"
+#     print "Converted to matrix representation"
     return points, labels, data
 
-def feats(data):
-    """represents data in terms of word counts.
-    returns representations of data points as a dictionary, and number of features"""
-#     print contents
-    feature_counts = defaultdict(int)  #total count of each feature, so we can ignore 1-count features
-    features = {}   #mapping of features to indices
-    cur_index = -1
-    representations = [] #rep. of each data point in terms of feature values
-    for date in data.getDates():
-        for abstract in data.getText()[date]:
-            for word in abstract.split():
-                feature_counts[word]+=1
-
-
-#    cur_index += 1
-#    features["*PERCENT*"] = cur_index
+# def feats(data):
+#     """represents data in terms of word counts.
+#     returns representations of data points as a dictionary, and number of features"""
+# #     print contents
+#     feature_counts = defaultdict(int)  #total count of each feature, so we can ignore 1-count features
+#     features = {}   #mapping of features to indices
+#     cur_index = -1
+#     representations = [] #rep. of each data point in terms of feature values
+#     for date in data.getDates():
+#         for abstract in data.getText()[date]:
+#             for word in abstract.split():
+#                 feature_counts[word]+=1
+#
+#
+# #    cur_index += 1
+# #    features["*PERCENT*"] = cur_indx
+# #     cur_index += 1
+# #     features["*POS*"] = cur_index
 #     cur_index += 1
-#     features["*POS*"] = cur_index
-    cur_index += 1
-    features["*NEG*"] = cur_index
-
-    for date in data.getDates():
-        i = data.getDates().index(date)
-        representations.append(defaultdict(float))
-        for abstract in data.getText()[date]:
-#            representations[i][features["*PERCENT*"]] = data.getScores()[date][0]/ (data.getScores()[date][0] - data.getScores()[date][1])
-#             representations[i][features["*POS*"]] = data.getScores()[date][0]
-            representations[i][features["*NEG*"]] = data.getScores()[date][1]
-
-    return representations, cur_index+1
+#     features["*NEG*"] = cur_index
+#
+#     for date in data.getDates():
+#         i = data.getDates().index(date)
+#         representations.append(defaultdict(float))
+#         for abstract in data.getText()[date]:
+# #            representations[i][features["*PERCENT*"]] = data.getScores()[date][0]/ (data.getScores()[date][0] - data.getScores()[date][1])
+# #             representations[i][features["*POS*"]] = data.getScores()[date][0]
+#             representations[i][features["*NEG*"]] = data.getScores()[date][1]
+#
+#     return representations, cur_index+1
 
 def words(data):
     """represents data in terms of word counts.
@@ -327,16 +231,21 @@ def words(data):
     features = {}   #mapping of features to indices
     cur_index = -1
     representations = [] #rep. of each data point in terms of feature values
-    for date in data.getDates():
-        for abstract in data.getText()[date]:
-            for word in abstract.split():
-                feature_counts[word]+=1
+#     for date in data.getDates():
+#         for abstract in data.getText()[date]:
+#             for word in abstract.split():
+#                 feature_counts[word]+=1
+#
+#         for author in data.getAuthors()[date]:
+#             feature_counts[author]+=1
 
 
-    cur_index += 1
-    features["*PERCENT*"] = cur_index
+
+
 #     cur_index += 1
-#     features["*POS*"] = cur_index
+#     features["*PERCENT*"] = cur_index
+    cur_index += 1
+    features["*POS*"] = cur_index
     cur_index += 1
     features["*NEG*"] = cur_index
 #     cur_index += 1
@@ -349,31 +258,113 @@ def words(data):
 #     features["*SUPER_NEG*"] = cur_index
 #     cur_index += 1
 #     features["*PREV_DATE*"] = cur_index
-
+#     cur_index += 1
+#     features["*PREV1*"] = cur_index
+#     cur_index += 1
+#     features["*PREV2*"] = cur_index
+#     cur_index += 1
+#     features["*PREV3*"] = cur_index
+#     cur_index += 1
+#     features["*PREV4*"] = cur_index
+#     cur_index += 1
+#     features["*PREV5*"] = cur_index
+#     cur_index += 1
+#     features["*PREV6*"] = cur_index
 
     for date in data.getDates():
         i = data.getDates().index(date)
         representations.append(defaultdict(float))
+#         for author in data.getAuthors()[date]:
+#             if author in features:
+#                 feat_index = features[author]
+#             else:
+#                 cur_index += 1
+#                 features[author] = cur_index
+#                 feat_index = cur_index
+#             representations[i][feat_index] += 1
+#
+# #
         for abstract in data.getText()[date]:
+
+#             for word in abstract.split():
+# #                 word.strip().lstrip(string.punctuation).rstrip(string.punctuation)
+#                 if word[-1] != '.':
+#                     continue  #no impact'trending', 'benefits', 'depression', 'bull', 'hot', 'improvement'
+#                     #negative impact million, trillion, billion, growth, revenue,performance, salary, market
+#
+#                 if word in features:
+#                     feat_index = features[word]
+#                 else:
+#                     cur_index += 1
+#                     features[word] = cur_index
+#                     feat_index = cur_index
+#                 representations[i][feat_index] += 1
+
+
+
+
+            flag = False
             for word in abstract.split():
-#                 word.strip().lstrip(string.punctuation).rstrip(string.punctuation)
+                word.strip().lstrip(string.punctuation).rstrip(string.punctuation)
+
+                if word in ['not', 'very', 'so', 'really', 'extremely', 'quite', 'remarkably', 'somewhat', 'moderately', 'super']:
+                    flag = True
+                    flaggedWord = word
+                    continue
+
                 if not data.getSentiments().has_key(word) and word not in []:  #no impact'trending', 'benefits', 'depression', 'bull', 'hot', 'improvement'
                     #negative impact million, trillion, billion, growth, revenue,performance, salary, market
+                    flag = False
                     continue
-                if word in features:
-                    feat_index = features[word]
+
+                if flag:
+                    word = flaggedWord  + " "  + word
+                    if not data.getSentiments().has_key(word) and word not in []:  #no impact'trending', 'benefits', 'depression', 'bull', 'hot', 'improvement'
+                    #negative impact million, trillion, billion, growth, revenue,performance, salary, market
+                        flag = False
+                        continue
+                    if word in features:
+                        feat_index = features[word]
+                    else:
+                        cur_index += 1
+                        features[word] = cur_index
+                        feat_index = cur_index
+                    flag = False
                 else:
-                    cur_index += 1
-                    features[word] = cur_index
-                    feat_index = cur_index
+                    if word in features:
+                        feat_index = features[word]
+                    else:
+                        cur_index += 1
+                        features[word] = cur_index
+                        feat_index = cur_index
                 representations[i][feat_index] += 1
-            representations[i][features["*PERCENT*"]] = data.getScores()[date][0]/ (data.getScores()[date][0] - data.getScores()[date][1])
-#             representations[i][features["*POS*"]] = data.getScores()[date][0]
+#             representations[i][features["*PERCENT*"]] = data.getScores()[date][0]/ (data.getScores()[date][0] - data.getScores()[date][1])
+            representations[i][features["*POS*"]] = data.getScores()[date][0]
             representations[i][features["*NEG*"]] = data.getScores()[date][1]
 #             representations[i][features["*NET*"]] = data.getScores()[date][2]/len(data.getText()[date])
 #             representations[i][features["*NUM_ARTICLES*"]] = len(data.getText()[date])
 #             representations[i][features["*SUPER_POS*"]] = data.getScores()[date][3]/len(data.getText()[date])
 #             representations[i][features["*SUPER_NEG*"]] = data.getScores()[date][4]/len(data.getText()[date])
+#             index = data.getDates().index(date)
+#             index -= 1
+#             newDate = data.getDates()[index]
+#             representations[i][features["*PREV1*"]] = data.getScores()[newDate][1]
+#             index -= 1
+# #             newDate = data.getDates()[index]
+# #             representations[i][features["*PREV2*"]] = data.getScores()[newDate][1]
+#             index -= 1
+#             newDate = data.getDates()[index]
+#             representations[i][features["*PREV3*"]] = data.getScores()[newDate][1]
+#             index -= 1
+#             newDate = data.getDates()[index]
+#             representations[i][features["*PREV4*"]] = data.getScores()[newDate][1]
+#             index -= 1
+#             newDate = data.getDates()[index]
+#             representations[i][features["*PREV5*"]] = data.getScores()[newDate][1]
+#             index -= 1
+#             newDate = data.getDates()[index]
+#             representations[i][features["*PREV6*"]] = data.getScores()[newDate][1]
+
 #             if i == 0 or i == 1:
 #                 representations[i][features["*PREV_DATE*"]] = 0
 #             else:
@@ -385,24 +376,31 @@ def words(data):
 
 if __name__=='__main__':
 #     traindata, trainlabels = rawdata_to_vectors('data', ndims=None)#
-    points, labels, data = rawdata_to_vectors('newTest', ndims=None)#
-#     #added text
-#     dateList = data.getDates()
-#     print dateList
-#     dateArray = numpy.array(data.getDates())
-#     print dateArray
-    ttsplit = int(numpy.size(labels)/10)  #split into train, dev, and test 80-10-10
+    date1 = "20100101"
+#     date2 = "20140617"
+    date2 = "20141120"
+    points, labels, data = rawdata_to_vectors('authors', date1, date2, ndims=None)
 
-    traindates, devdates, testdates = numpy.split(numpy.array(data.getDates()), [ttsplit*8, ttsplit*9])
-    traindata, devdata, testdata = numpy.split(points, [ttsplit*8, ttsplit*9])
-    trainlabels, devlabels, testlabels = numpy.split(labels, [ttsplit*8, ttsplit*9])
+    ttsplit = int(numpy.size(labels)/10)  #split into train, dev, and test 80-10-10
+    traindates, testdates = numpy.split(numpy.array(data.getDates()), [ttsplit*8.5])
+    traindata, testdata = numpy.split(points, [ttsplit*8.5])
+    trainlabels, testlabels = numpy.split(labels, [ttsplit*8.5])
 
     numfeats = numpy.size(traindata, axis=1)
     svc = svm.LinearSVC()
+
     traindata = scipy.sparse.csr_matrix(traindata, dtype=numpy.float_)
     testdata = scipy.sparse.csr_matrix(testdata, dtype=numpy.float_)
-    devdata = scipy.sparse.csr_matrix(devdata, dtype=numpy.float_)
+#     devdata = scipy.sparse.csr_matrix(devdata, dtype=numpy.float_)
+#     print devdates
+
     svc.fit(traindata, trainlabels)
+    print 'Done Training'
+    print svc.score(testdata, testlabels)*100, "% rate on test data"
+
+#     game = svmGame(svc.predict(testdata), testlabels, testdates, data)
+#     game.playGame()
+
 
 
     print str(traindates.shape), "****", str(traindata.shape), "train"
