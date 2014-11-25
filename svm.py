@@ -398,17 +398,21 @@ if __name__=='__main__':
     trainlabels, devlabels, testlabels = numpy.split(labels, [ttsplit*8, ttsplit*9])
 
     numfeats = numpy.size(traindata, axis=1)
-    svc = svm.SVC(numfeats)
+    svc = svm.LinearSVC()
     traindata = scipy.sparse.csr_matrix(traindata, dtype=numpy.float_)
     testdata = scipy.sparse.csr_matrix(testdata, dtype=numpy.float_)
     devdata = scipy.sparse.csr_matrix(devdata, dtype=numpy.float_)
     svc.fit(traindata, trainlabels)
+
 
     print str(traindates.shape), "****", str(traindata.shape), "train"
     print str(testdates.shape), "****", str(testdata.shape), "test"
     print str(devdates.shape), "****", str(devdata.shape), "dev"
 
     print "Training..."
+
+    print svc.predict(devdata)
+    print svc.predict(testdata)
 
     print svc.score(devdata, devlabels), "% rate on development data"
     print svc.score(testdata, testlabels), "% rate on test data"
