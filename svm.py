@@ -1,13 +1,4 @@
-
-# svd
-# Create for HW5 CS73 14F Due November 2
-# @author: Sravana Reddy
-# Modified by Joshua Lang to implement training, testing, and additional bagofwords function
-# Description: Perceptron Class that is used to use perceptron learning as part of a vector space model
-# to analyze the gender of different twitter users based on twitter data.
-#
-''' I think it will only run in python'''
-
+#svm.py
 
 from __future__ import division
 import numpy.linalg
@@ -16,7 +7,6 @@ from sklearn import svm
 import scipy
 from dataStore import dataStore
 import string
-#from svmGame import svmGame
 
 
 #Function to reduce the dimensions of the model (written by Sravana Reddy)
@@ -94,12 +84,7 @@ class Perceptron:
 #                 print "WRONG: Guessed -; Actually  +:   " + stockValue
 #                 csvout.writerow(("W", 1, -1, stockValue, value))
                 mistakes += 1
-#             else:
-#                 if value>0:
-# #                     csvout.writerow(("C", 1, 1, stockValue, value))
-#                 else:
-#                     csvout.writerow(("C", -1, -1, stockValue, value))
-#                 print "CORRECT: Guessed right for:    " + stockValue
+
         return mistakes
 
     def trainAvgPerceptron(self, traindata, trainlabels, max_epochs):
@@ -117,7 +102,7 @@ class Perceptron:
                 for row in range(traindata.shape[0]):
 
                 #COMMENT OUT TO READ TWEETS IN ORDER
-                #loop code for randomly going through the tweets in a random order
+                #loop code for randomly going through the days in a random order
 #                 x = [i for i in range(traindata.shape[0])]  #generate a list of the indices
 #                 shuffle(x)                                  #randomize the order
 #                 for row in x:
@@ -160,9 +145,6 @@ def rawdata_to_vectors(filename, date1, date2, ndims):
     data = dataStore(filename, date1, date2)
     labels = numpy.zeros((len(data.getText()),), dtype = numpy.int)  #gender labels for each user
 
-
-#     csvout = csv.writer(open("mydata.csv", "wb"))
-#     csvout.writerow(("Date", "StockChange", "Positive", "Negative", "Net Change"))
     dates = data.getDates()
     for date in range(len(dates)):
         if data.getStocks()[dates[date]][0] == 1:
@@ -170,9 +152,9 @@ def rawdata_to_vectors(filename, date1, date2, ndims):
         else:
             labels[date] = -1
 
-    representations, numfeats = words(data)
-
-#     print "Featurized data"
+    #DECIDE WHICH bagofwords-like functon to run
+#     representations, numfeats = allFeats(data)      #uncomment if you want to play around with all features
+    representations, numfeats = bestFeats(data)   # uncomment to run with best feautures we found
 
     #convert to a matrix representation
     points = numpy.zeros((len(representations), numfeats))
@@ -192,45 +174,73 @@ def rawdata_to_vectors(filename, date1, date2, ndims):
 #     print "Converted to matrix representation"
     return points, labels, data
 
-# def feats(data):
-#     """represents data in terms of word counts.
-#     returns representations of data points as a dictionary, and number of features"""
-# #     print contents
-#     feature_counts = defaultdict(int)  #total count of each feature, so we can ignore 1-count features
-#     features = {}   #mapping of features to indices
-#     cur_index = -1
-#     representations = [] #rep. of each data point in terms of feature values
-#     for date in data.getDates():
-#         for abstract in data.getText()[date]:
-#             for word in abstract.split():
-#                 feature_counts[word]+=1
-#
-#
-# #    cur_index += 1
-# #    features["*PERCENT*"] = cur_indx
-# #     cur_index += 1
-# #     features["*POS*"] = cur_index
-#     cur_index += 1
-#     features["*NEG*"] = cur_index
-#
-#     for date in data.getDates():
-#         i = data.getDates().index(date)
-#         representations.append(defaultdict(float))
-#         for abstract in data.getText()[date]:
-# #            representations[i][features["*PERCENT*"]] = data.getScores()[date][0]/ (data.getScores()[date][0] - data.getScores()[date][1])
-# #             representations[i][features["*POS*"]] = data.getScores()[date][0]
-#             representations[i][features["*NEG*"]] = data.getScores()[date][1]
-#
-#     return representations, cur_index+1
 
-def words(data):
-    """represents data in terms of word counts.
+def bestFeats(data):
+    """represents data in terms of counts of different features
+    uncomment various portions to add features that will be considered in the svm model
     returns representations of data points as a dictionary, and number of features"""
-#     print contents
-    feature_counts = defaultdict(int)  #total count of each feature, so we can ignore 1-count features
     features = {}   #mapping of features to indices
     cur_index = -1
     representations = [] #rep. of each data point in terms of feature values
+    cur_index += 1
+    features["*PERCENT*"] = cur_index
+    cur_index += 1
+    features["*NEG*"] = cur_index
+
+    for date in data.getDates():
+        i = data.getDates().index(date)
+        representations.append(defaultdict(float))
+        for abstract in data.getText()[date]:
+            flag = False
+            for word in abstract.split():
+                word.strip().lstrip(string.punctuation).rstrip(string.punctuation)
+                
+                #check if the word is a negator or an  intensifier, if so flag that we need to check the next word in context ( intensifer NEXT )
+                if word in ['not', 'very', 'so', 'really', 'extremely', 'quite', 'remarkably', 'somewhat', 'moderately', 'super']:
+                    flag = True
+                    flaggedWord = word
+                    continue
+
+                if not data.getSentiments().has_key(word):  
+                    flag = False
+                    continue
+
+                if flag:
+                    word = flaggedWord  + " "  + word
+                    if not data.getSentiments().has_key(word):  
+                        flag = False
+                        continue
+                    if word in features:
+                        feat_index = features[word]
+                    else:
+                        cur_index += 1
+                        features[word] = cur_index
+                        feat_index = cur_index
+                    flag = False
+                else:
+                    if word in features:
+                        feat_index = features[word]
+                    else:
+                        cur_index += 1
+                        features[word] = cur_index
+                        feat_index = cur_index
+                representations[i][feat_index] += 1
+
+            representations[i][features["*PERCENT*"]] = data.getScores()[date][0]/ (data.getScores()[date][0] - data.getScores()[date][1])
+            representations[i][features["*NEG*"]] = data.getScores()[date][1]
+    return representations, cur_index+1
+
+
+def allFeats(data):
+    """represents data in terms of counts of different features
+    uncomment various portions to add features that will be considered in the svm model
+    returns representations of data points as a dictionary, and number of features"""
+#     print contents
+    #feature_counts = defaultdict(int)  #total count of each feature, so we can ignore 1-count features UNCOMMENT IF NECESSARY
+    features = {}   #mapping of features to indices
+    cur_index = -1
+    representations = [] #rep. of each data point in terms of feature values
+    '''COMMENTED OUT, CAN BE USED IF USING N-GRAM MODEL OR GETTING AUTHOR INFORMATION
 #     for date in data.getDates():
 #         for abstract in data.getText()[date]:
 #             for word in abstract.split():
@@ -238,14 +248,13 @@ def words(data):
 #
 #         for author in data.getAuthors()[date]:
 #             feature_counts[author]+=1
+    '''
 
-
-
-
-#     cur_index += 1
-#     features["*PERCENT*"] = cur_index
+#TO ADJUST THESE FEAUTRES, UNHIGHLIGHT THE FEATURE AND THE cur_index LINE ABOVE IT THEN
     cur_index += 1
-    features["*POS*"] = cur_index
+    features["*PERCENT*"] = cur_index
+#     cur_index += 1
+#     features["*POS*"] = cur_index
     cur_index += 1
     features["*NEG*"] = cur_index
 #     cur_index += 1
@@ -274,16 +283,18 @@ def words(data):
     for date in data.getDates():
         i = data.getDates().index(date)
         representations.append(defaultdict(float))
-#         for author in data.getAuthors()[date]:
-#             if author in features:
-#                 feat_index = features[author]
-#             else:
-#                 cur_index += 1
-#                 features[author] = cur_index
-#                 feat_index = cur_index
-#             representations[i][feat_index] += 1
-#
-# #
+        '''       
+        #  IF WANT TO ADD AUTHORS ADD A FEAUTURE, UNCOMMENT THIS
+        #         for author in data.getAuthors()[date]:
+        #             if author in features:
+        #                 feat_index = features[author]
+        #             else:
+        #                 cur_index += 1
+        #                 features[author] = cur_index
+        #                 feat_index = cur_index
+        #             representations[i][feat_index] += 1
+        #
+        # '''
         for abstract in data.getText()[date]:
 
 #             for word in abstract.split():
@@ -306,7 +317,8 @@ def words(data):
             flag = False
             for word in abstract.split():
                 word.strip().lstrip(string.punctuation).rstrip(string.punctuation)
-
+                
+                #check if the word is a negator or an  intensifier, if so flag that we need to check the next word in context ( intensifer NEXT )
                 if word in ['not', 'very', 'so', 'really', 'extremely', 'quite', 'remarkably', 'somewhat', 'moderately', 'super']:
                     flag = True
                     flaggedWord = word
@@ -338,8 +350,11 @@ def words(data):
                         features[word] = cur_index
                         feat_index = cur_index
                 representations[i][feat_index] += 1
-#             representations[i][features["*PERCENT*"]] = data.getScores()[date][0]/ (data.getScores()[date][0] - data.getScores()[date][1])
-            representations[i][features["*POS*"]] = data.getScores()[date][0]
+                
+            #****TO SELECT FEATURE: UNCOMMENT FEATURE HERE AND COMMENT NOT USED FEAUTURES
+            #MAKE SURE THE COMMENTED FEAUTRES MATCH THE UNCOMMENTED FEATURES ABOVE IN THE LARBE CHUNK OF COMMNETED FEATURES   
+            representations[i][features["*PERCENT*"]] = data.getScores()[date][0]/ (data.getScores()[date][0] - data.getScores()[date][1])
+#            representations[i][features["*POS*"]] = data.getScores()[date][0]
             representations[i][features["*NEG*"]] = data.getScores()[date][1]
 #             representations[i][features["*NET*"]] = data.getScores()[date][2]/len(data.getText()[date])
 #             representations[i][features["*NUM_ARTICLES*"]] = len(data.getText()[date])
@@ -375,13 +390,11 @@ def words(data):
 
 
 if __name__=='__main__':
-#     traindata, trainlabels = rawdata_to_vectors('data', ndims=None)#
     date1 = "20100101"
-#     date2 = "20140617"
     date2 = "20141120"
-    points, labels, data = rawdata_to_vectors('newTest', date1, date2, ndims=None)
+    points, labels, data = rawdata_to_vectors('data', date1, date2, ndims=None)
 
-    ttsplit = int(numpy.size(labels)/10)  #split into train, dev, and test 80-10-10
+    ttsplit = int(numpy.size(labels)/10)  #split into train and test 85-10
     traindates, testdates = numpy.split(numpy.array(data.getDates()), [ttsplit*8.5])
     traindata, testdata = numpy.split(points, [ttsplit*8.5])
     trainlabels, testlabels = numpy.split(labels, [ttsplit*8.5])
@@ -391,26 +404,8 @@ if __name__=='__main__':
 
     traindata = scipy.sparse.csr_matrix(traindata, dtype=numpy.float_)
     testdata = scipy.sparse.csr_matrix(testdata, dtype=numpy.float_)
-#     devdata = scipy.sparse.csr_matrix(devdata, dtype=numpy.float_)
-#     print devdates
 
     svc.fit(traindata, trainlabels)
     print 'Done Training'
     print svc.score(testdata, testlabels)*100, "% rate on test data"
 
-#     game = svmGame(svc.predict(testdata), testlabels, testdates, data)
-#     game.playGame()
-
-
-
-    print str(traindates.shape), "****", str(traindata.shape), "train"
-    print str(testdates.shape), "****", str(testdata.shape), "test"
-    #print str(devdates.shape), "****", str(devdata.shape), "dev"
-
-    print "Training..."
-
-    #print svc.predict(devdata)
-    print svc.predict(testdata)
-
-    #print svc.score(devdata, devlabels), "% rate on development data"
-    print svc.score(testdata, testlabels), "% rate on test data"

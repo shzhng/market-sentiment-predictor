@@ -1,112 +1,11 @@
-# svd
-# Create for HW5 CS73 14F Due November 2
-# @author: Sravana Reddy
-# Modified by Joshua Lang to implement training, testing, and additional bagofwords function
-# Description: Perceptron Class that is used to use perceptron learning as part of a vector space model
-# to analyze the gender of different twitter users based on twitter data.
-#
-''' I think it will only run in python'''
-
+# svd.py
 
 from __future__ import division
-import numpy
 import numpy.linalg
 from collections import defaultdict
-from random import shuffle
-import stock_downloader
-import sentiment
-import nyt
-import os
-import json
-import string
-from scipy import stats
-import csv
+from dataStore import dataStore
+from stockGame import stockGame
 
-
-class trainDataStorage:
-    def __init__(self, trainDirectory, date1, date2):
-        self.sentDict = sentiment.SentimentDict()
-        self.sentDict.loadSentimentsPitt("pitt_lexicon.tff")
-
-        self.textDict = defaultdict(list)
-        self.scoreDict = {}
-        self.stockDict = {}
-        self.fillDicts(trainDirectory, date1, date2)
-        
-        self.dates = sorted(list(self.stockDict.keys()))
-#         list(self.stockDict.keys())
-#         shuffle(self.dates)
-        
-    def getSentiments(self):
-        return self.sentDict.sentiments
-    
-    def getText(self):
-        return self.textDict
-    
-    def getScores(self):
-        return self.scoreDict
-    
-    def getStocks(self):
-        return self.stockDict        
-    
-    #create a list of the dates we are looking at in a particular order so it matches the place in the label and data vectors
-    def getDates(self):
-#         x = [i for i in range(traindata.shape[0])]   #generate a list of the indices
-#         shuffle(x)                                   # randomize the order
-        return self.dates
-#         return sorted(self.dates)
-    
-    #fill all of the dictionaries for training
-    def fillDicts(self, directory, date1, date2):
-        self.fillTextAndScoreDict(directory)
-        self.fillStockDict(date1, date2)
-        
-    #fill the text and score dicts using the training data from 2014
-    def fillTextAndScoreDict(self, directory):
-        for root, dirs, files in os.walk(directory):
-            for f in files:
-                posTotal, negTotal = 0, 0
-                superPos, superNeg = 0, 0
-                f = open(os.path.join(root, f), 'r')
-                news = json.loads(f.read())
-                if not news:
-                    continue
-                name = f.name.split('/')[1].strip("#")  #get the name as YYYYMMDD string
-                for item in news:
-                    if item['abstract']:
-                        self.textDict[name].append(item['abstract'])            #append the text to a dictionary to keep all abstracts
-                        pos, neg = self.sentDict.generateScore(item['abstract'])
-                        posTotal += pos
-                        negTotal += neg
-                        if pos > 4:
-                            superPos +=1
-                        if neg < -4:
-                            superNeg +=1
-                    elif item['lead_paragraph']:
-                        self.textDict[name].append(item['lead_paragraph'])            #append the text to a dictionary to keep all abstracts
-                        pos, neg = self.sentDict.generateScore(item['lead_paragraph'])
-                        posTotal += pos
-                        negTotal += neg
-                        if pos > 4:
-                            superPos +=1
-                        if neg < -4:
-                            superNeg +=1
-                self.scoreDict[name] = (posTotal, negTotal, posTotal + negTotal, superPos, superNeg)  #add a triple as the value for each date
-            break
-        
-    def fillStockDict(self, date1, date2):
-        databank = stock_downloader.stockDatabank()
-        databank.download()
-        removeList = []
-        for date in self.textDict:
-            if databank.dateList.has_key(date) and date >= date1 and date <= date2:
-                self.stockDict[date] = (databank.getStockDirections(date), databank.getStockReturns(date)[0],databank.getStockReturns(date)[1], databank.getStockReturns(date)[2] )
-            else:
-                removeList.append(date)
-        for date in removeList:
-            self.textDict.pop(date)
-            self.scoreDict.pop(date)
-            
 #Function to reduce the dimensions of the model (written by Sravana Reddy)
 def dimensionality_reduce(data, ndims):
     U, s, Vh = numpy.linalg.svd(data)
@@ -135,7 +34,8 @@ class Perceptron:
         while loops < max_epochs:
             
             mistakes = 0  #initialize the number of mistakes to 0
-
+            
+            #loop code to read the tweets in order
             for row in range(traindata.shape[0]): 
                         
                 value = numpy.dot(traindata[row], self.w)  # get the dot product of the data point and the weight vector
@@ -146,12 +46,9 @@ class Perceptron:
                 elif value > 0 and trainlabels[row] == -1:
                     self.w = self.w - self.alpha*traindata[row]
                     mistakes += 1
-#             if there are no mistakes, we can stop
             if mistakes == 0:
                 break
-            print "Loops: " + str(loops) + "  Mistakes: " + str(mistakes) 
             loops+= 1 # increment the number of loops since we have completeed one
-
         return mistakes #return the number of mistakes we have made
     
     #function to test the testing data for perception learning
@@ -165,74 +62,61 @@ class Perceptron:
                 mistakes += 1
             elif value > 0 and testlabels[row] == -1:
                 mistakes += 1
-
         return mistakes
     
+    def getW(self):
+        return self.w
+        
+        
+        
     def trainAvgPerceptron(self, traindata, trainlabels, max_epochs):
              
-            traindata = numpy.c_[ traindata, numpy.ones(traindata.shape[0]) ]  #add dummy feature column of ones to end of traindata
-            loops = 0
-            counter = 1
-             
-            #loop through at most the given number of epochs or until mistakes = 0
-            while loops < max_epochs:
-                mistakes = 0
-                 
-                #COMMENT OUT TO READ THE TWEETS IN RANDOM ORDER
-                #loop code to read the tweets in order (COMMENT OUT TO USE RANDOM TWEET ORDER)
-                for row in range(traindata.shape[0]):
-                 
-                #COMMENT OUT TO READ TWEETS IN ORDER
-                #loop code for randomly going through the tweets in a random order
-#                 x = [i for i in range(traindata.shape[0])]  #generate a list of the indices
-#                 shuffle(x)                                  #randomize the order
-#                 for row in x:
-                     
-                     
-                    value = numpy.dot(traindata[row], self.w)   #get the dot product of the weight vector and the data vector
-                     
-                    #update the weight vector if the dot product and label for the data point vary in sign
-                    #also update the saved cached weight vector
-                    if value < 0 and trainlabels[row] == 1:
-                        self.w = self.w + self.alphaAvgPer*traindata[row]
-                        self.cachedW = self.cachedW + self.alphaAvgPer*counter*traindata[row]
-                        mistakes += 1
-                    elif value > 0 and trainlabels[row] == -1:
-                        self.w = self.w - self.alphaAvgPer*traindata[row]
-                        self.cachedW = self.cachedW - self.alphaAvgPer*counter*traindata[row]
-                        mistakes += 1
-                    counter+= 1     #always increment the counter
-                 
-                 
-                #if there are no mistakes, we can stop
-                if mistakes == 0:
-                    break
-                #update the loops and the learning rate
-                loops+= 1
-                print "Loops: " + str(loops) + "  Mistakes: " + str(mistakes) 
-                if loops < 25:
-                    self.alphaAvgPer -= .01
-                elif loops < 100:
-                    self.alphaAvgPer -= .005 
-#                 elif loops < 50:
-#                      self.alphaAvgPer -= 0   
-             
-            self.w = self.w - (self.cachedW/counter)        #update the weight vector
-            return mistakes
+        traindata = numpy.c_[ traindata, numpy.ones(traindata.shape[0]) ]  #add dummy feature column of ones to end of traindata
+        loops = 0
+        counter = 1
+        #loop through at most the given number of epochs or until mistakes = 0
+        while loops < max_epochs:
+            mistakes = 0
+            for row in range(traindata.shape[0]):
+                value = numpy.dot(traindata[row], self.w)   #get the dot product of the weight vector and the data vector
+                if value < 0 and trainlabels[row] == 1:
+                    self.w = self.w + self.alphaAvgPer*traindata[row]
+                    self.cachedW = self.cachedW + self.alphaAvgPer*counter*traindata[row]
+                    mistakes += 1
+                elif value > 0 and trainlabels[row] == -1:
+                    self.w = self.w - self.alphaAvgPer*traindata[row]
+                    self.cachedW = self.cachedW - self.alphaAvgPer*counter*traindata[row]
+                    mistakes += 1
+                counter+= 1     #always increment the counter
+            if mistakes == 0:
+                break
+            loops+= 1
+            print "Loops: " + str(loops) + "  Mistakes: " + str(mistakes) 
+            if loops < 20:
+                self.alphaAvgPer -= .015
+            elif loops < 100:
+                self.alphaAvgPer -= .005          
+        self.w = self.w - (self.cachedW/counter)        #update the weight vector
+        return mistakes
     
 def rawdata_to_vectors(filename, date1, date2, ndims):
     """reads raw data, maps to feature space, 
     returns a matrix of data points and labels"""
-    data = trainDataStorage(filename, date1, date2)
+    
+    data = dataStore(filename, date1, date2)
     labels = numpy.zeros((len(data.getText()),), dtype = numpy.int)  #gender labels for each user
-
+    
     dates = data.getDates()
     for date in range(len(dates)):
         if data.getStocks()[dates[date]][0] == 1:
             labels[date] = 1
         else:
             labels[date] = -1
-    representations, numfeats = words(data)
+            
+    #DECIDE WHAT FEAUTRES TO USE
+    representations, numfeats = bestFeats(data)
+#     representations, numfeats = allFeats(data)
+
     
     print "Featurized data"
   
@@ -254,9 +138,8 @@ def rawdata_to_vectors(filename, date1, date2, ndims):
     print "Converted to matrix representation"
     return points, labels, data
     
-
-def words(data):
-    """represents data in terms of word counts.
+def bestFeats(data):
+    """represents data in terms of counts of best features
     returns representations of data points as a dictionary, and number of features"""
 #     print contents
     feature_counts = defaultdict(int)  #total count of each feature, so we can ignore 1-count features
@@ -267,7 +150,45 @@ def words(data):
         for abstract in data.getText()[date]:
             for word in abstract.split():
                 feature_counts[word]+=1
-                
+    cur_index += 1
+    features["*PERCENT*"] = cur_index
+    cur_index += 1
+    features["*NEG*"] = cur_index
+    
+    for date in data.getDates():
+        i = data.getDates().index(date)
+        representations.append(defaultdict(float))
+        for abstract in data.getText()[date]:
+            for word in abstract.split():
+                if not data.getSentiments().has_key(word) and word not in []:  #no impact'trending', 'benefits', 'depression', 'bull', 'hot', 'improvement'
+                    #negative impact million, trillion, billion, growth, revenue,performance, salary, market
+                    continue
+                if word in features:
+                    feat_index = features[word]
+                else:
+                    cur_index += 1
+                    features[word] = cur_index
+                    feat_index = cur_index
+                representations[i][feat_index] += 1
+            representations[i][features["*PERCENT*"]] = data.getScores()[date][0]/ (data.getScores()[date][0] - data.getScores()[date][1])
+            representations[i][features["*NEG*"]] = data.getScores()[date][1]
+    return representations, cur_index+1
+    
+    
+    
+def allFeats(data):
+    """represents data in terms of counts of different features
+    uncomment various portions to add features that will be considered in the svd model
+    returns representations of data points as a dictionary, and number of features"""
+#     print contents
+    feature_counts = defaultdict(int)  #total count of each feature, so we can ignore 1-count features
+    features = {}   #mapping of features to indices
+    cur_index = -1
+    representations = [] #rep. of each data point in terms of feature values
+    for date in data.getDates():
+        for abstract in data.getText()[date]:
+            for word in abstract.split():
+                feature_counts[word]+=1
     
     cur_index += 1
     features["*PERCENT*"] = cur_index
@@ -318,34 +239,28 @@ def words(data):
 #                 representations[i][features["*PREV_DATE*"]] = data.getStocks()[prev][0] + data.getStocks()[prev2][0]
     return representations, cur_index+1
 
-
-if __name__=='__main__':    
-    date1 = "20121212"
-    date2 = "20141111"
-    points, labels, data = rawdata_to_vectors('newTest', date1, date2, ndims=None)
+if __name__=='__main__':
+    date1 = "20101101"
+    date2 = "20140917"
+    points, labels, data = rawdata_to_vectors('data', date1, date2, ndims=None)#
 
     ttsplit = int(numpy.size(labels)/10)  #split into train, dev, and test 80-10-10
-    print data.getDates()
+    
     traindates, testdates = numpy.split(numpy.array(data.getDates()), [ttsplit*8.5])
     traindata, testdata = numpy.split(points, [ttsplit*8.5])
     trainlabels, testlabels = numpy.split(labels, [ttsplit*8.5])
-    
-#     traindates, devdates, testdates = numpy.split(numpy.array(data.getDates()), [ttsplit*8, ttsplit*9])
-#     traindata, devdata, testdata = numpy.split(points, [ttsplit*8, ttsplit*9])
-#     trainlabels, devlabels, testlabels = numpy.split(labels, [ttsplit*8, ttsplit*9])
-    
+        
     numfeats = numpy.size(traindata, axis=1)
     classifier = Perceptron(numfeats)
     
     print "Training..."
     
-    #CHOOSE WHICH TRAINING METHOD THAT YOU WANT TO USE BY COMMENTING OUT THE ONE YOU DON'T WANT
-    trainmistakes = classifier.train(traindata, trainlabels, max_epochs = 1000)   #regular training
-#     trainmistakes = classifier.trainAvgPerceptron(traindata, trainlabels, max_epochs = 500)  #training with the average perceptron
+    #Decide whether to train with regular perceptron or avg perceptron
+#     trainmistakes = classifier.train(traindata, trainlabels, max_epochs = 1000)   #regular training
+    trainmistakes = classifier.trainAvgPerceptron(traindata, trainlabels, max_epochs = 1000)  #training with the average perceptron
     
     print "Finished training, with", trainmistakes*100/numpy.size(trainlabels), "% error rate"
 
-#     devmistakes = classifier.test(devdata, devlabels, devdates, data)
-#     print devmistakes*100/numpy.size(devlabels), "% error rate on development data"
     testmistakes = classifier.test(testdata, testlabels, testdates, data)
     print testmistakes*100/numpy.size(testlabels), "% error rate on test data"
+

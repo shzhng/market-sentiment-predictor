@@ -1,4 +1,5 @@
-#Class for the interactive game
+#stockGame.py
+#Class for an interactive game using the stock predictor to inform decisions
 import numpy
 import math
 

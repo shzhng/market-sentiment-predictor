@@ -1,3 +1,6 @@
+#stock_downloader.py
+#File that interacts with the Yahoo Finance API to download the necessary stock data for the DJIA
+
 import csv
 import urllib2
 from _collections import defaultdict
@@ -16,7 +19,6 @@ class stockDatabank:
 
     def download(self):
 
-        #downloaded_data  = urllib2.urlopen("http://ichart.finance.yahoo.com/table.csv?s=DJIA&d=10&e=14&f=2014&g=d&a=0&b=1&c=2000&ignore=.csv")
         downloaded_data  = urllib2.urlopen("http://ichart.finance.yahoo.com/table.csv?s=DJIA&d=10&e=14&f=2014&g=d&a=10&b=18&c=2008&ignore=.csv")
         csv_data = reversed(list(csv.reader(downloaded_data)))
         counter = 0

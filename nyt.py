@@ -1,4 +1,6 @@
 #!/usr/bin/env python2
+# File to interact with the New York Times API and get the necessary data
+
 
 import json
 import math

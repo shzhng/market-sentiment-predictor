@@ -2,8 +2,6 @@
 #File that reads in the sentiment corpus that we have
 #Assumes that the format of the file is that a word is on each line
 
-positive = "./positive-words.txt"
-negative = "./negative-words.txt"
 
 import string
 
@@ -30,17 +28,6 @@ class SentimentDict:
 
     def __init__(self):
         self.sentiments = None
-
-    def loadSentiments(self):
-        newDict = {}
-        #load each file
-        for line in open(positive):
-            newDict[line.strip()] = 1
-        for line in open(negative):
-            newDict[line.strip()] = -1
-
-        self.sentiments = newDict
-        #return newDict
 
     def loadSentimentsPitt(self, path):
         newDict = {}
