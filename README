@@ -21,3 +21,12 @@ or
 python2 svm.py
 
 depending on the version of Python that your operating system defaults to.
+
+To play the interactive game with the SVM giving decision recommendations,
+run:
+
+python svm_interactive.py
+
+or
+
+python2 svm_interactive.py
