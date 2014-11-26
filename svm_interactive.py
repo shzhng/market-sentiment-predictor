@@ -1,5 +1,8 @@
 # svm_interactive.py
-#
+#While playing, enter positive integer to buy, negative integer to sell, and q to quit and print stats.
+
+# You can uncomment features to add or remove features and change the bagofwords function in rawdata_to_vectors to decide
+# which feats to use (best or all)
 
 from __future__ import division
 import numpy.linalg
@@ -392,8 +395,8 @@ def allFeats(data):
 
 if __name__=='__main__':
     
-    date1 = "20100101"
-    date2 = "20141120"
+    date1 = "20110101"
+    date2 = "20140617"
     points, labels, data = rawdata_to_vectors('data', date1, date2, ndims=None)
 
     ttsplit = int(numpy.size(labels)/10)  #split into train, and test 85-15

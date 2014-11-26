@@ -1,4 +1,6 @@
 # svd.py
+# You can uncomment features to add or remove features and change the bagofwords function in rawdata_to_vectors to decide
+# which feats to use (best or all)
 
 from __future__ import division
 import numpy.linalg
@@ -91,7 +93,6 @@ class Perceptron:
             if mistakes == 0:
                 break
             loops+= 1
-            print "Loops: " + str(loops) + "  Mistakes: " + str(mistakes) 
             if loops < 20:
                 self.alphaAvgPer -= .015
             elif loops < 100:

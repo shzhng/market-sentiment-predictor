@@ -1,4 +1,8 @@
 #svd_interactive.py
+#While playing, enter positive integer to buy, negative integer to sell, and q to quit and print stats.
+#
+# You can uncomment features to add or remove features and change the bagofwords function in rawdata_to_vectors to decide
+# which feats to use (best or all)
 from __future__ import division
 import numpy.linalg
 from collections import defaultdict
@@ -90,7 +94,6 @@ class Perceptron:
             if mistakes == 0:
                 break
             loops+= 1
-            print "Loops: " + str(loops) + "  Mistakes: " + str(mistakes) 
             if loops < 20:
                 self.alphaAvgPer -= .015
             elif loops < 100:
@@ -198,8 +201,8 @@ def words(data):
     return representations, cur_index+1
 
 if __name__=='__main__':
-    date1 = "20121112"
-    date2 = "20140917"
+    date1 = "20110101"
+    date2 = "20140617"
     points, labels, data = rawdata_to_vectors('data', date1, date2, ndims=None)#
 
     ttsplit = int(numpy.size(labels)/10)  #split into train, dev, and test 80-10-10
@@ -212,18 +215,11 @@ if __name__=='__main__':
     classifier = Perceptron(numfeats)
     
     print "Training..."
-    
-#     trainmistakes = classifier.train(traindata, trainlabels, max_epochs = 1000)   #regular training
+
     trainmistakes = classifier.trainAvgPerceptron(traindata, trainlabels, max_epochs = 1000)  #training with the average perceptron
     
-    print "Finished training, with", trainmistakes*100/numpy.size(trainlabels), "% error rate"
-    
+    print "Done Training."
     game = stockGame(traindata, trainlabels, traindates, data, classifier.getW())
     game.playGame()
 
-#     print "Finished training, with", trainmistakes*100/numpy.size(trainlabels), "% error rate"
-#     devmistakes = classifier.test(devdata, devlabels, devdates, data)
-#     print devmistakes*100/numpy.size(devlabels), "% error rate on development data"
-#     testmistakes = classifier.test(testdata, testlabels, testdates, data)
-#     print testmistakes*100/numpy.size(testlabels), "% error rate on test data"
 

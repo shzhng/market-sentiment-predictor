@@ -1,5 +1,6 @@
 #svm.py
-
+# You can uncomment features to add or remove features and change the bagofwords function in rawdata_to_vectors to decide
+# which feats to use (best or all)
 from __future__ import division
 import numpy.linalg
 from collections import defaultdict
