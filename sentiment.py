@@ -7,6 +7,25 @@ negative = "./negative-words.txt"
 
 import string
 
+negaters = {
+        'not': True
+}
+
+augmenters = {
+        'very': True,
+        'so': True,
+        'really': True,
+        'extremely': True,
+        'remarkably': True,
+        'super': True
+}
+
+softeners = {
+        'quite': True,
+        'somewhat': True,
+        'moderately': True
+}
+
 class SentimentDict:
 
     def __init__(self):
@@ -40,10 +59,15 @@ class SentimentDict:
     def generateScore(self, textString):
         pos = 0
         neg = 0
+        prevWord = ""
         for word in textString.split():
             word = word.strip().rstrip(string.punctuation).lstrip(string.punctuation) #remove punctuation that might be on the word
             if self.sentiments.has_key(word):
-                value = self.sentiments[word]
+                modifier = 1
+                modifier = -1 if prevWord in negaters else modifier
+                modifier = 2 if prevWord in augmenters else modifier
+                modifier = 0.5 if prevWord in softeners else modifier
+                value = self.sentiments[word] * modifier
                 if value > 0:
                     pos += value
                 elif value < 0:
